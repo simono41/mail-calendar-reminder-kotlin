@@ -1,0 +1,2 @@
+# Beispiel um jeden Tag nach den Kalendareinträgen des aktuellen Tages zu schauen
+0 0 * * * java -jar /opt/mail-calendar-reminder/app/build/libs/mail-calendar-reminder-kotlin-1.0-SNAPSHOT-uber.jar /opt/containers/mailu/dav/collection-root/simono41\@brothertec.eu/cd3b21d4-ee8f-ccbe-e98b-f7e0d3e88abb/ notify@brothertec.eu simono41@brothertec.eu passwordString mail.brothertec.eu
