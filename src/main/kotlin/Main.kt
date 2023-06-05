@@ -79,6 +79,8 @@ fun listFilesForFolder(folder: File) {
             getNotifications(file.absolutePath)
         }
     }
+    // Beende das Programm
+    exitProcess(0)
 }
 
 fun getNotifications(file: String) {
