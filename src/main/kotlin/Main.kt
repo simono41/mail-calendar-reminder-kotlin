@@ -55,6 +55,7 @@ fun main(args: Array<String>) {
     val path = Paths.get("")
     val directoryName = path.toAbsolutePath().toString()
     logger.debug("Current Working Directory is = $directoryName")
+
     if (args.size <= 4) {
         logger.error("Es fehlen noch einige Parameter!!!")
         logger.error("ics-dir, from, to, password, host")
@@ -88,61 +89,68 @@ fun getNotifications(file: String) {
         FileInputStream(file).use { fin ->
             val builder = CalendarBuilder()
             val calendar: net.fortuna.ical4j.model.Calendar = builder.build(fin)
+            var isValidVEVENT = false
+
             for (o: Component in calendar.components) {
                 logger.debug("Component: " + o.name)
                 for (o1: Property in o.properties) {
                     logger.debug(o1.name + ": " + o1.value)
                 }
+
+                if (o.name.equals("VEVENT"))
+                    isValidVEVENT = true
             }
 
-            // http://www.cheerfulprogramming.com/blog/2021/03/09/intro-to-ical4j
-            val event: VEvent = calendar.getComponent(Component.VEVENT)
+            if (isValidVEVENT) {
+                // http://www.cheerfulprogramming.com/blog/2021/03/09/intro-to-ical4j
+                val event: VEvent = calendar.getComponent(Component.VEVENT)
 
-            // https://www.ical4j.org/examples/recur/
-            // https://stackoverflow.com/questions/1005523/how-to-add-one-day-to-a-date
-            // Create the date range which is desired.
-            val dt: Date = Date()
-            val arrival: Calendar = Calendar.getInstance()
-            arrival.time = dt
-            arrival.set(Calendar.SECOND, 1)
-            arrival.set(Calendar.MINUTE, 0)
-            arrival.set(Calendar.HOUR, 0)
-            val departure: Calendar = Calendar.getInstance()
-            departure.time = dt
-            departure.set(Calendar.SECOND, 59)
-            departure.set(Calendar.MINUTE, 59)
-            departure.set(Calendar.HOUR, 23)
-            // departure.add(Calendar.DATE, 1);
-            val fromTime: DateTime = DateTime(arrival.time)
-            val toTime: DateTime = DateTime(departure.time)
-            val period: Period = Period(fromTime, toTime)
-            val list: PeriodList = event.calculateRecurrenceSet(period)
-            for (po: Period in list) {
-                val component: Component = po.component
-                val summary: Summary =
-                    component.getProperty(Property.SUMMARY)
-                val dtStart: DtStart = component.getProperty(Property.DTSTART)
-                val dtEnd: DtEnd = component.getProperty(Property.DTEND)
-                val location: Location? =
-                    component.getProperty(Property.LOCATION)
-                val description: Description? =
-                    component.getProperty(Property.DESCRIPTION)
+                // https://www.ical4j.org/examples/recur/
+                // https://stackoverflow.com/questions/1005523/how-to-add-one-day-to-a-date
+                // Create the date range which is desired.
+                val dt: Date = Date()
+                val arrival: Calendar = Calendar.getInstance()
+                arrival.time = dt
+                arrival.set(Calendar.SECOND, 1)
+                arrival.set(Calendar.MINUTE, 0)
+                arrival.set(Calendar.HOUR, 0)
+                val departure: Calendar = Calendar.getInstance()
+                departure.time = dt
+                departure.set(Calendar.SECOND, 59)
+                departure.set(Calendar.MINUTE, 59)
+                departure.set(Calendar.HOUR, 23)
+                // departure.add(Calendar.DATE, 1);
+                val fromTime: DateTime = DateTime(arrival.time)
+                val toTime: DateTime = DateTime(departure.time)
+                val period: Period = Period(fromTime, toTime)
+                val list: PeriodList = event.calculateRecurrenceSet(period)
+                for (po: Period in list) {
+                    val component: Component = po.component
+                    val summary: Summary =
+                        component.getProperty(Property.SUMMARY)
+                    val dtStart: DtStart = component.getProperty(Property.DTSTART)
+                    val dtEnd: DtEnd = component.getProperty(Property.DTEND)
+                    val location: Location? =
+                        component.getProperty(Property.LOCATION)
+                    val description: Description? =
+                        component.getProperty(Property.DESCRIPTION)
 
-                // Summary summary = po.getSummary();
-                val messageSubject: String = ("Es existiert für heute ein neuer Kalendereintrag Namens: "
-                        + summary.value)
-                logger.info(messageSubject)
-                var messageText: String = ("Der Termin beginnt heute um: " + formatDateTime(dtStart.date)
-                        + " und endet um: " + formatDateTime(dtEnd.date) + ".")
-                if (location != null) {
-                    messageText += "\n\n Er findet in " + location.value + " statt."
+                    // Summary summary = po.getSummary();
+                    val messageSubject: String = ("Es existiert für heute ein neuer Kalendereintrag Namens: "
+                            + summary.value)
+                    logger.info(messageSubject)
+                    var messageText: String = ("Der Termin beginnt heute um: " + formatDateTime(dtStart.date)
+                            + " und endet um: " + formatDateTime(dtEnd.date) + ".")
+                    if (location != null) {
+                        messageText += "\n\n Er findet in " + location.value + " statt."
+                    }
+                    if (description != null) {
+                        messageText += "\n\n Folgende Notiz existiert in diesen Eintrag: \n" + description.value
+                    }
+                    messageText += "\n\n This email is a service from mail-calendar-reminder Version $VERSION. \n Delivered by Simon Rieger"
+                    logger.info(messageText)
+                    sendMail(messageSubject, messageText)
                 }
-                if (description != null) {
-                    messageText += "\n\n Folgende Notiz existiert in diesen Eintrag: \n" + description.value
-                }
-                messageText += "\n\n This email is a service from mail-calendar-reminder Version 0.1. \n Delivered by Simon Rieger"
-                logger.info(messageText)
-                sendMail(messageSubject, messageText)
             }
         }
     } catch (e: IOException) {
